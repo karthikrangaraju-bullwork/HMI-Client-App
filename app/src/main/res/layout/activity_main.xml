@@ -1,0 +1,88 @@
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="16dp">
+
+        <TextView
+            android:id="@+id/status_text"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Status: Binding..."
+            android:textSize="18sp"
+            android:textStyle="bold" />
+
+        <!-- CAN ID -->
+        <TextView
+            android:id="@+id/can_id_value"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="ID: N/A"
+            android:textSize="16sp"
+            android:layout_marginTop="12dp" />
+
+        <!-- Battery Fields -->
+        <TextView
+            android:id="@+id/battery_soc_value"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Battery SOC: N/A"
+            android:textSize="14sp" />
+
+        <TextView
+            android:id="@+id/battery_soh_value"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Battery SOH: N/A"
+            android:textSize="14sp" />
+
+        <TextView
+            android:id="@+id/battery_power_value"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Battery Power: N/A"
+            android:textSize="14sp" />
+
+        <!-- Arm / IMU Fields -->
+        <TextView
+            android:id="@+id/arm_state_value"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Arm State: N/A"
+            android:textSize="14sp" />
+
+        <TextView
+            android:id="@+id/imu_x_value"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="IMU X: N/A"
+            android:textSize="14sp" />
+
+        <TextView
+            android:id="@+id/imu_y_value"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="IMU Y: N/A"
+            android:textSize="14sp" />
+
+        <!-- Buttons -->
+        <Button
+            android:id="@+id/query_button"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="1. Test: Query Latest Data"
+            android:layout_marginTop="16dp" />
+
+        <Button
+            android:id="@+id/insert_button"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="2. Test: Insert Dummy Data"
+            android:layout_marginTop="8dp" />
+
+    </LinearLayout>
+</ScrollView>
