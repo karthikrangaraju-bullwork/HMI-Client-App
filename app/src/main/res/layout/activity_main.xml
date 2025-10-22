@@ -1,88 +1,215 @@
-<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+<ScrollView
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
-    android:layout_height="match_parent">
+    android:layout_height="match_parent"
+    android:background="#FAFAFA"
+    tools:context=".MainActivity">
 
-    <LinearLayout
+    <androidx.constraintlayout.widget.ConstraintLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="vertical"
         android:padding="16dp">
 
         <TextView
-            android:id="@+id/status_text"
-            android:layout_width="match_parent"
+            android:id="@+id/app_title"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Status: Binding..."
-            android:textSize="18sp"
-            android:textStyle="bold" />
+            android:text="HMI Vehicle Data Dashboard"
+            android:textSize="26sp"
+            android:textStyle="bold"
+            android:textColor="@color/purple_700"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
 
-        <!-- CAN ID -->
+        <TextView
+            android:id="@+id/can_id_label"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Last CAN ID:"
+            android:layout_marginTop="8dp"
+            android:textSize="14sp"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/app_title" />
+
         <TextView
             android:id="@+id/can_id_value"
-            android:layout_width="match_parent"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="ID: N/A"
-            android:textSize="16sp"
-            android:layout_marginTop="12dp" />
+            android:layout_marginStart="8dp"
+            android:text="N/A"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            android:textColor="@color/teal_700"
+            app:layout_constraintStart_toEndOf="@id/can_id_label"
+            app:layout_constraintTop_toTopOf="@id/can_id_label"
+            tools:text="784" />
 
-        <!-- Battery Fields -->
-        <TextView
-            android:id="@+id/battery_soc_value"
-            android:layout_width="match_parent"
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/card_battery"
+            style="@style/Widget.MaterialComponents.CardView"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:text="Battery SOC: N/A"
-            android:textSize="14sp" />
+            android:layout_marginTop="16dp"
+            app:cardCornerRadius="12dp"
+            app:cardElevation="6dp"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/can_id_label">
 
-        <TextView
-            android:id="@+id/battery_soh_value"
-            android:layout_width="match_parent"
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="16dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="🔋 Battery Health (ID 769)"
+                    android:textSize="20sp"
+                    android:textStyle="bold"
+                    android:textColor="@color/purple_500"
+                    android:layout_marginBottom="8dp" />
+
+                <GridLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:columnCount="2"
+                    android:rowOrderPreserved="true">
+
+                    <TextView android:text="SOC:" style="@style/DataLabel" />
+                    <TextView android:id="@+id/battery_soc_value" style="@style/DataValue" tools:text="85 %" />
+
+                    <TextView android:text="SOH:" style="@style/DataLabel" />
+                    <TextView android:id="@+id/battery_soh_value" style="@style/DataValue" tools:text="98 %" />
+
+                    <TextView android:text="Power (W):" style="@style/DataLabel" />
+                    <TextView android:id="@+id/battery_power_value" style="@style/DataValue" tools:text="1500 W" />
+
+                    <TextView android:text="Capacity (Ah):" style="@style/DataLabel" />
+                    <TextView android:id="@+id/battery_capacity_value" style="@style/DataValue" tools:text="50 Ah" />
+
+                    <TextView android:text="Temp NTC1 (°C):" style="@style/DataLabel" />
+                    <TextView android:id="@+id/battery_temp_value" style="@style/DataValue" tools:text="35 °C" />
+                </GridLayout>
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/card_vehicle"
+            style="@style/Widget.MaterialComponents.CardView"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:text="Battery SOH: N/A"
-            android:textSize="14sp" />
+            android:layout_marginTop="16dp"
+            app:cardCornerRadius="12dp"
+            app:cardElevation="6dp"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/card_battery">
 
-        <TextView
-            android:id="@+id/battery_power_value"
-            android:layout_width="match_parent"
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="16dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="⚙️ Vehicle &amp; Safety Flags (IDs 774/775)"
+                    android:textSize="20sp"
+                    android:textStyle="bold"
+                    android:textColor="@color/teal_700"
+                    android:layout_marginBottom="8dp" />
+
+                <GridLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:columnCount="2"
+                    android:rowOrderPreserved="true">
+
+                    <TextView android:text="Key State (774):" style="@style/DataLabel" />
+                    <TextView android:id="@+id/key_state_value" style="@style/DataValue" tools:text="ON" />
+
+                    <TextView android:text="Arm State (775):" style="@style/DataLabel" />
+                    <TextView android:id="@+id/arm_state_value" style="@style/StatusValue" tools:text="Active" />
+
+                    <TextView android:text="Kill Switch:" style="@style/DataLabel" />
+                    <TextView android:id="@+id/kill_switch_value" style="@style/StatusValue" tools:text="Inactive" />
+
+                    <TextView android:text="IMU Roll (X):" style="@style/DataLabel" />
+                    <TextView android:id="@+id/imu_x_value" style="@style/DataValue" tools:text="1.2 deg" />
+
+                    <TextView android:text="IMU Pitch (Y):" style="@style/DataLabel" />
+                    <TextView android:id="@+id/imu_y_value" style="@style/DataValue" tools:text="-0.5 deg" />
+                </GridLayout>
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/card_motor"
+            style="@style/Widget.MaterialComponents.CardView"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:text="Battery Power: N/A"
-            android:textSize="14sp" />
+            android:layout_marginTop="16dp"
+            app:cardCornerRadius="12dp"
+            app:cardElevation="6dp"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/card_vehicle">
 
-        <!-- Arm / IMU Fields -->
-        <TextView
-            android:id="@+id/arm_state_value"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Arm State: N/A"
-            android:textSize="14sp" />
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="16dp">
 
-        <TextView
-            android:id="@+id/imu_x_value"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="IMU X: N/A"
-            android:textSize="14sp" />
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="⚡ Motor 41 Performance (ID 784)"
+                    android:textSize="20sp"
+                    android:textStyle="bold"
+                    android:textColor="@color/teal_200"
+                    android:layout_marginBottom="8dp" />
 
-        <TextView
-            android:id="@+id/imu_y_value"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="IMU Y: N/A"
-            android:textSize="14sp" />
+                <GridLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:columnCount="2"
+                    android:rowOrderPreserved="true">
 
-        <!-- Buttons -->
+                    <TextView android:text="Motor RPM:" style="@style/DataLabel" />
+                    <TextView android:id="@+id/motor_rpm_value" style="@style/DataValue" tools:text="4500 rpm" />
+
+                    <TextView android:text="Power (W):" style="@style/DataLabel" />
+                    <TextView android:id="@+id/motor_power_m_value" style="@style/DataValue" tools:text="3200 W" />
+
+                    <TextView android:text="Phase Current (A):" style="@style/DataLabel" />
+                    <TextView android:id="@+id/motor_current_value" style="@style/DataValue" tools:text="45 A" />
+
+                    <TextView android:text="Motor Temp (°C):" style="@style/DataLabel" />
+                    <TextView android:id="@+id/motor_temp_value" style="@style/DataValue" tools:text="85 °C" />
+
+                    <TextView android:text="MCU Temp (°C):" style="@style/DataLabel" />
+                    <TextView android:id="@+id/mcu_temp_value" style="@style/DataValue" tools:text="92 °C" />
+                </GridLayout>
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
         <Button
-            android:id="@+id/query_button"
-            android:layout_width="match_parent"
+            android:id="@+id/button_test_insert"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="1. Test: Query Latest Data"
-            android:layout_marginTop="16dp" />
+            android:text="Test: Insert Dummy Data (ID 9999)"
+            android:layout_marginTop="24dp"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/card_motor" />
 
-        <Button
-            android:id="@+id/insert_button"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="2. Test: Insert Dummy Data"
-            android:layout_marginTop="8dp" />
-
-    </LinearLayout>
+        
+    </androidx.constraintlayout.widget.ConstraintLayout>
 </ScrollView>
