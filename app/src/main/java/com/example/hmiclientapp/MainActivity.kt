@@ -6,6 +6,7 @@ import android.content.Intent
 import android.content.ServiceConnection
 import android.os.Bundle
 import android.os.IBinder
+import android.os.RemoteException
 import android.util.Log
 import android.widget.Button
 import android.widget.TextView
@@ -13,9 +14,11 @@ import androidx.appcompat.app.AppCompatActivity
 import com.example.myhmimiddlewareapplication.CanMessageAidl
 import com.example.myhmimiddlewareapplication.IHmiDataCallback
 import com.example.myhmimiddlewareapplication.IHmiDataService
-import java.util.Random
-import android.graphics.Typeface // NEW
-import androidx.core.content.ContextCompat // NEW
+import androidx.core.content.ContextCompat
+import androidx.activity.result.contract.ActivityResultContracts
+import java.io.BufferedReader
+import java.io.InputStreamReader
+import java.util.concurrent.Executors
 
 class MainActivity : AppCompatActivity() {
 
@@ -28,22 +31,37 @@ class MainActivity : AppCompatActivity() {
     private lateinit var armStateValue: TextView
     private lateinit var imuXValue: TextView
     private lateinit var imuYValue: TextView
-    private lateinit var keyStateValue: TextView        // ADDED
-    private lateinit var killSwitchValue: TextView      // ADDED
+    private lateinit var keyStateValue: TextView
+    private lateinit var killSwitchValue: TextView
 
     // UI ELEMENTS - BATTERY (ID 769)
     private lateinit var batterySocValue: TextView
     private lateinit var batterySohValue: TextView
     private lateinit var batteryPowerValue: TextView
-    private lateinit var batteryCapacityValue: TextView // ADDED
-    private lateinit var batteryTempValue: TextView     // ADDED
+    private lateinit var batteryCapacityValue: TextView
+    private lateinit var batteryTempValue: TextView
 
     // UI ELEMENTS - MOTOR 41 (ID 784)
-    private lateinit var motorRpmValue: TextView        // ADDED
-    private lateinit var motorPowerMValue: TextView     // ADDED
-    private lateinit var motorCurrentValue: TextView    // ADDED
-    private lateinit var motorTempValue: TextView       // ADDED
-    private lateinit var mcuTempValue: TextView         // ADDED
+    private lateinit var motorRpmValue: TextView
+    private lateinit var motorPowerMValue: TextView
+    private lateinit var motorCurrentValue: TextView
+    private lateinit var motorTempValue: TextView      // <-- CORRECTED LINE
+    private lateinit var mcuTempValue: TextView        // <-- CORRECTED LINE
+
+    // UI ELEMENTS - BUTTONS
+    private lateinit var insertButton: Button
+    private lateinit var updateDbcButton: Button
+
+    // Activity Result Launcher for file picking
+    private val dbcFilePickerLauncher = registerForActivityResult(
+        ActivityResultContracts.GetContent()
+    ) { uri ->
+        if (uri != null) {
+            readDbcFileContent(uri)
+        } else {
+            Log.w(TAG, "DBC file selection cancelled by user.")
+        }
+    }
 
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -56,7 +74,6 @@ class MainActivity : AppCompatActivity() {
         imuXValue = findViewById(R.id.imu_x_value)
         imuYValue = findViewById(R.id.imu_y_value)
 
-        // Initialize new UI components
         keyStateValue = findViewById(R.id.key_state_value)
         killSwitchValue = findViewById(R.id.kill_switch_value)
 
@@ -72,138 +89,212 @@ class MainActivity : AppCompatActivity() {
         motorTempValue = findViewById(R.id.motor_temp_value)
         mcuTempValue = findViewById(R.id.mcu_temp_value)
 
-        // Bind to the service
-        Intent(IHmiDataService::class.java.name).also { intent ->
-            // Must set package explicitly for implicit intents in AIDL across apps
-            intent.setPackage("com.example.myhmimiddlewareapplication")
-            bindService(intent, serviceConnection, Context.BIND_AUTO_CREATE)
-        }
+        // Initialize buttons and set listeners
+        insertButton = findViewById(R.id.button_test_insert)
+        updateDbcButton = findViewById(R.id.button_update_dbc)
 
-        findViewById<Button>(R.id.button_test_insert).setOnClickListener {
-            sendDummyData()
+        insertButton.setOnClickListener { sendDummyData() }
+        updateDbcButton.setOnClickListener { startDbcFilePicker() }
+
+        // Bind to the service
+//        Intent(IHmiDataService::class.java.name).also { intent ->
+//            intent.setPackage("com.example.myhmimiddlewareapplication")
+//            bindService(intent, serviceConnection, Context.BIND_AUTO_CREATE)
+//        }
+
+        Intent(IHmiDataService::class.java.name).also { intent ->
+            // ACTION: Specifies the AIDL interface/action the service is using.
+            intent.setAction("com.bullwork.hmi_headless.IHmiDataService")
+
+            // CRITICAL FIX: The package must be the server's application ID: com.bullwork.hmi_headless
+            intent.setPackage("com.bullwork.hmi_headless")
+
+            bindService(intent, serviceConnection, Context.BIND_AUTO_CREATE)
         }
     }
 
-    // AIDL SERVICE CONNECTION
+    override fun onStart() {
+        super.onStart()
+        if (isBound) registerCallback()
+    }
+
+    override fun onStop() {
+        super.onStop()
+        if (isBound) unregisterCallback()
+    }
+
     private val serviceConnection = object : ServiceConnection {
         override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
             hmiService = IHmiDataService.Stub.asInterface(service)
             isBound = true
+            Log.d(TAG, "Service Bound: IHmiDataService connected.")
+            registerCallback()
             try {
-                hmiService?.registerCallback(hmiCallback)
-                Log.i(TAG, "Service bound and callback registered.")
-            } catch (e: Exception) {
-                Log.e(TAG, "Failed to register callback", e)
+                val latest = hmiService?.getLatestData()
+                if (latest != null && latest.messageId != -1) {
+                    updateUi(latest)
+                }
+            } catch (e: RemoteException) {
+                Log.e(TAG, "Failed to get latest data: ${e.message}")
             }
         }
 
         override fun onServiceDisconnected(name: ComponentName?) {
             hmiService = null
             isBound = false
-            Log.w(TAG, "Service disconnected.")
+            Log.w(TAG, "Service Disconnected.")
         }
     }
 
-    // AIDL CALLBACK IMPLEMENTATION
     private val hmiCallback = object : IHmiDataCallback.Stub() {
         override fun onNewData(message: CanMessageAidl) {
-            updateUi(message)
-        }
-    }
-
-    override fun onDestroy() {
-        if (isBound) {
-            try {
-                hmiService?.unregisterCallback(hmiCallback)
-            } catch (e: Exception) {
-                Log.e(TAG, "Failed to unregister callback", e)
+            runOnUiThread {
+                updateUi(message)
             }
-            unbindService(serviceConnection)
         }
-        super.onDestroy()
     }
 
-    private fun setStatusText(textView: TextView, status: String?) {
-        textView.text = status ?: "N/A"
-        val context = textView.context
-        // Define the active (green) and inactive (red/default) colors
-        val activeColor = ContextCompat.getColor(context, R.color.teal_700) // Assuming green/teal is good
-        val inactiveColor = ContextCompat.getColor(context, R.color.black)
-
-        // Check for "Active" or "ON" status keywords
-        val isActive = status.equals("Active", ignoreCase = true) || status.equals("ON", ignoreCase = true) || status == "1"
-
-        textView.setTextColor(if (isActive) activeColor else inactiveColor)
-        textView.setTypeface(null, if (isActive) Typeface.BOLD else Typeface.NORMAL)
+    private fun registerCallback() {
+        try {
+            hmiService?.registerCallback(hmiCallback)
+            Log.d(TAG, "Callback registered.")
+        } catch (e: RemoteException) {
+            Log.e(TAG, "Failed to register callback: ${e.message}")
+        }
     }
 
-    /**
-     * Updates the UI based on the incoming CAN message.
-     */
+    private fun unregisterCallback() {
+        try {
+            hmiService?.unregisterCallback(hmiCallback)
+            Log.d(TAG, "Callback unregistered.")
+        } catch (e: RemoteException) {
+            Log.e(TAG, "Failed to unregister callback: ${e.message}")
+        }
+    }
+
     private fun updateUi(message: CanMessageAidl) {
-        runOnUiThread {
-            canIdValue.text = message.messageId.toString()
+        // ... (updateUi logic remains unchanged)
+        val fields = message.fields
+        canIdValue.text = message.messageId.toString()
 
-            val fields = message.fields
-            val canId = message.messageId
-
-            // Update specific sections based on the CAN ID received
-            when (canId) {
-                774 -> {
-                    // Ignition Data
-                    setStatusText(keyStateValue, fields["Key_On_Off"])
-                }
-                769 -> {
-                    // Battery Data 1
-                    batterySocValue.text = fields["batterySoc"] ?: "N/A"
-                    batterySohValue.text = fields["batterySoh"] ?: "N/A"
-                    batteryPowerValue.text = fields["batteryPower"] ?: "N/A"
-                    batteryCapacityValue.text = fields["batteryCapacity"] ?: "N/A"
-                    batteryTempValue.text = fields["batteryTempNtc1"] ?: "N/A"
-                }
-                775 -> {
-                    // Vehicle State / IMU
-                    setStatusText(armStateValue, fields["Arm_state"])
-                    setStatusText(killSwitchValue, fields["Kill_switch"])
-                    imuXValue.text = fields["imuAngleX"] ?: "N/A"
-                    imuYValue.text = fields["imuAngleY"] ?: "N/A"
-                }
-                784 -> {
-                    // Motor 41 Performance
-                    motorRpmValue.text = fields["rpm"] ?: "N/A"
-                    motorPowerMValue.text = fields["power"] ?: "N/A"
-                    motorCurrentValue.text = fields["phaseCurrent"] ?: "N/A"
-                    motorTempValue.text = fields["motorTemp"] ?: "N/A"
-                    mcuTempValue.text = fields["mcuTemp"] ?: "N/A"
+        // Update fields based on CAN ID
+        when (message.messageId) {
+            769 -> { // Battery Data
+                batterySocValue.text = fields["batterySoc"] ?: "N/A"
+                batterySohValue.text = fields["batterySoh"] ?: "N/A"
+                batteryPowerValue.text = fields["batteryPower"] ?: "N/A"
+                batteryCapacityValue.text = fields["batteryCapacity"] ?: "N/A"
+                // Assuming NTC1 is displayed as the main battery temp
+                batteryTempValue.text = fields["batteryTempNtc1"] ?: "N/A"
+            }
+            774 -> { // Ignition Data (Original Key_On_Off) or NEW TEST/UPLOADED FRAME
+                // Check if the DBC was reloaded (look for the test signal name)
+                if (fields.containsKey("TEST_KEY_STATE")) {
+                    keyStateValue.text = "TEST: ${fields["TEST_KEY_STATE"]}"
+                    keyStateValue.setTextColor(ContextCompat.getColor(this, R.color.teal_700))
+                } else {
+                    keyStateValue.text = fields["Key_On_Off"] ?: "N/A"
+                    keyStateValue.setTextColor(ContextCompat.getColor(this, R.color.black))
                 }
             }
+            775 -> { // Vehicle Data
+                imuXValue.text = fields["imuAngleX"] ?: "N/A"
+                imuYValue.text = fields["imuAngleY"] ?: "N/A"
+                // Assuming "Arm_state" and "Kill_switch" are part of flags in fields map
+                armStateValue.text = fields["Arm_state"] ?: "N/A"
+                killSwitchValue.text = fields["Kill_switch"] ?: "N/A"
+            }
+            784 -> { // Motors Data
+                motorRpmValue.text = fields["rpm"] ?: "N/A"
+                motorPowerMValue.text = fields["power"] ?: "N/A"
+                motorCurrentValue.text = fields["phaseCurrent"] ?: "N/A"
+                motorTempValue.text = fields["motorTemp"] ?: "N/A"
+                mcuTempValue.text = fields["mcuTemp"] ?: "N/A"
+            }
+            9999 -> { // Inserted Dummy Data
+                keyStateValue.text = fields["dummy_key"] ?: "INSERTED"
+            }
+        }
+
+        Log.d(TAG, "Received message: ID=${message.messageId}, Fields=${message.fields.keys.joinToString()}")
+    }
+
+    private fun sendDummyData() {
+        val message = CanMessageAidl(
+            id = 0,
+            messageId = 9999, // Custom ID for insertion
+            data = "DUMMY:12:34:56:78:90:AB:CD:EF",
+            timestamp = System.currentTimeMillis(),
+            fields = mapOf("dummy_key" to "ACTIVE")
+        )
+        try {
+            hmiService?.insertData(message)
+            Log.i(TAG, "Sent dummy data to middleware.")
+        } catch (e: RemoteException) {
+            Log.e(TAG, "Failed to send dummy data: ${e.message}")
         }
     }
-    /**
-     * Sends a dummy message (CAN ID 9999) to the middleware service via AIDL insertData().
-     */
-    private fun sendDummyData() {
+
+    // Launches the system file picker to select a DBC file
+    private fun startDbcFilePicker() {
         if (!isBound || hmiService == null) {
-            Log.e(TAG, "Service not bound. Cannot send data.")
+            Log.e(TAG, "Cannot start file picker: Service is not bound.")
             return
         }
+        updateDbcButton.text = "Selecting File..."
+        // Use */* to allow selection of any text/DBC file
+        dbcFilePickerLauncher.launch("*/*")
+    }
 
-        val dummyData = CanMessageAidl(
-            id = 0,
-            messageId = 9999,
-            data = "Test Data from Client App",
-            timestamp = System.currentTimeMillis(),
-            fields = mapOf(
-                "Test_Field_1" to "123",
-                "Status_Flag" to (if (Random().nextBoolean()) "Active" else "Inactive")
-            )
-        )
+    // Reads the content of the selected file asynchronously
+    private fun readDbcFileContent(uri: android.net.Uri) {
+        // Read file content off the main thread
+        Executors.newSingleThreadExecutor().execute {
+            try {
+                contentResolver.openInputStream(uri)?.use { inputStream ->
+                    val reader = BufferedReader(InputStreamReader(inputStream))
+                    val content = reader.readText()
 
+                    if (content.isNotBlank()) {
+                        runOnUiThread {
+                            updateDbcButton.text = "File Read. Sending to Service..."
+                        }
+                        sendDbcContentToService(content)
+                    } else {
+                        Log.e(TAG, "Selected file is empty.")
+                        runOnUiThread {
+                            updateDbcButton.text = "DBC Update FAILED (File Empty)"
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Error reading selected DBC file: ${e.message}", e)
+                runOnUiThread {
+                    updateDbcButton.text = "DBC Update FAILED (Read Error)"
+                }
+            }
+        }
+    }
+
+    // Sends the actual DBC file content to the service
+    private fun sendDbcContentToService(dbcContent: String) {
         try {
-            hmiService?.insertData(dummyData)
-            Log.d(TAG, "Sent dummy CAN ID 9999 to service.")
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to insert dummy data: ${e.message}", e)
+            val success = hmiService?.reloadDbc(dbcContent)
+            runOnUiThread {
+                if (success == true) {
+                    Log.i(TAG, "DBC RELOAD SUCCESS. Middleware rules updated with uploaded file.")
+                    updateDbcButton.text = "DBC RELOADED! (Uploaded File Active)"
+                    updateDbcButton.backgroundTintList = ContextCompat.getColorStateList(this, R.color.teal_700)
+                } else {
+                    Log.e(TAG, "DBC RELOAD FAILED! Check middleware service logs for parsing errors.")
+                    updateDbcButton.text = "DBC RELOAD FAILED (Service Error)"
+                }
+            }
+        } catch (e: RemoteException) {
+            Log.e(TAG, "AIDL call to reloadDbc failed: ${e.message}", e)
+            runOnUiThread {
+                updateDbcButton.text = "DBC RELOAD AIDL ERROR"
+            }
         }
     }
 }

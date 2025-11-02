@@ -4,12 +4,17 @@
     package="com.example.hmiclientapp">
 
     <!-- Permission to bind to the server service -->
-    <uses-permission android:name="com.example.myhmimiddlewareapplication.BIND_HMI_DATA_SERVICE"/>
+<!--    <uses-permission android:name="com.example.myhmimiddlewareapplication.BIND_HMI_DATA_SERVICE"/>-->
 
+    <uses-permission android:name="com.bullwork.hmi_headless.BIND_HMI_DATA_SERVICE"/>
     <!-- Allows the client to see the server app on Android 11+ -->
+
     <queries>
-        <package android:name="com.example.myhmimiddlewareapplication"/>
+        <package android:name="com.bullwork.hmi_headless"/>
     </queries>
+<!--    <queries>-->
+<!--        <package android:name="com.example.myhmimiddlewareapplication"/>-->
+<!--    </queries>-->
 
     <application
         android:allowBackup="true"

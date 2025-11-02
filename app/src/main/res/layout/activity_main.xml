@@ -210,6 +210,17 @@
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@id/card_motor" />
 
-        
+        <Button
+            android:id="@+id/button_update_dbc"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:text="Test: RELOAD DBC (ID 774 test)"
+            android:backgroundTint="@color/purple_700"
+            android:textColor="@color/white"
+            android:layout_marginTop="8dp"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/button_test_insert"
+            app:layout_constraintBottom_toBottomOf="parent" />
     </androidx.constraintlayout.widget.ConstraintLayout>
 </ScrollView>
