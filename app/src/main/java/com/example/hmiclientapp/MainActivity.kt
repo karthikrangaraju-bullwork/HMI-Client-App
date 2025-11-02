@@ -11,9 +11,9 @@ import android.util.Log
 import android.widget.Button
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
-import com.example.myhmimiddlewareapplication.CanMessageAidl
-import com.example.myhmimiddlewareapplication.IHmiDataCallback
-import com.example.myhmimiddlewareapplication.IHmiDataService
+import com.bullwork.hmi_headless.CanMessageAidl
+import com.bullwork.hmi_headless.IHmiDataCallback
+import com.bullwork.hmi_headless.IHmiDataService
 import androidx.core.content.ContextCompat
 import androidx.activity.result.contract.ActivityResultContracts
 import java.io.BufferedReader
@@ -45,8 +45,8 @@ class MainActivity : AppCompatActivity() {
     private lateinit var motorRpmValue: TextView
     private lateinit var motorPowerMValue: TextView
     private lateinit var motorCurrentValue: TextView
-    private lateinit var motorTempValue: TextView      // <-- CORRECTED LINE
-    private lateinit var mcuTempValue: TextView        // <-- CORRECTED LINE
+    private lateinit var motorTempValue: TextView
+    private lateinit var mcuTempValue: TextView
 
     // UI ELEMENTS - BUTTONS
     private lateinit var insertButton: Button
@@ -95,12 +95,6 @@ class MainActivity : AppCompatActivity() {
 
         insertButton.setOnClickListener { sendDummyData() }
         updateDbcButton.setOnClickListener { startDbcFilePicker() }
-
-        // Bind to the service
-//        Intent(IHmiDataService::class.java.name).also { intent ->
-//            intent.setPackage("com.example.myhmimiddlewareapplication")
-//            bindService(intent, serviceConnection, Context.BIND_AUTO_CREATE)
-//        }
 
         Intent(IHmiDataService::class.java.name).also { intent ->
             // ACTION: Specifies the AIDL interface/action the service is using.
@@ -173,21 +167,21 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun updateUi(message: CanMessageAidl) {
-        // ... (updateUi logic remains unchanged)
         val fields = message.fields
         canIdValue.text = message.messageId.toString()
 
         // Update fields based on CAN ID
         when (message.messageId) {
-            769 -> { // Battery Data
-                batterySocValue.text = fields["batterySoc"] ?: "N/A"
+            785 -> { // Battery Data (ID 769 - No observed change, keeping old fields)
+                batterySocValue.text = fields["BATTERY_SOC"] ?: "N/A"
                 batterySohValue.text = fields["batterySoh"] ?: "N/A"
                 batteryPowerValue.text = fields["batteryPower"] ?: "N/A"
-                batteryCapacityValue.text = fields["batteryCapacity"] ?: "N/A"
-                // Assuming NTC1 is displayed as the main battery temp
+                batteryCapacityValue.text = fields["BATTERY_CAPACITY"] ?: "N/A"
                 batteryTempValue.text = fields["batteryTempNtc1"] ?: "N/A"
             }
-            774 -> { // Ignition Data (Original Key_On_Off) or NEW TEST/UPLOADED FRAME
+
+            // Handles old ID 774 (Ignition)
+            774 -> {
                 // Check if the DBC was reloaded (look for the test signal name)
                 if (fields.containsKey("TEST_KEY_STATE")) {
                     keyStateValue.text = "TEST: ${fields["TEST_KEY_STATE"]}"
@@ -197,26 +191,45 @@ class MainActivity : AppCompatActivity() {
                     keyStateValue.setTextColor(ContextCompat.getColor(this, R.color.black))
                 }
             }
-            775 -> { // Vehicle Data
-                imuXValue.text = fields["imuAngleX"] ?: "N/A"
-                imuYValue.text = fields["imuAngleY"] ?: "N/A"
-                // Assuming "Arm_state" and "Kill_switch" are part of flags in fields map
-                armStateValue.text = fields["Arm_state"] ?: "N/A"
-                killSwitchValue.text = fields["Kill_switch"] ?: "N/A"
+
+            // Handles old ID 775 and NEW ID 832 (Vehicle Data & Flags)
+            775, 832 -> {
+                // Map old 'Key_On_Off' (from 774/775) to new 'MCU_IGNITION' (from 832)
+                keyStateValue.text = fields["MCU_IGNITION"] ?: fields["Key_On_Off"] ?: "N/A"
+
+                // Map old 'Arm_state' to new 'ARM_STATE_FLAG' (assuming this is the new field name)
+                armStateValue.text = fields["ARM_STATE_FLAG"] ?: fields["Arm_state"] ?: "N/A"
+
+                // Map old 'Kill_switch' to new 'KILL_SWITCH'
+                killSwitchValue.text = fields["KILL_SWITCH"] ?: fields["Kill_switch"] ?: "N/A"
+
+                // Keep IMU for backward compatibility, assuming 832 doesn't carry it
+                if (message.messageId == 775) {
+                    imuXValue.text = fields["imuAngleX"] ?: "N/A"
+                    imuYValue.text = fields["imuAngleY"] ?: "N/A"
+                }
             }
-            784 -> { // Motors Data
-                motorRpmValue.text = fields["rpm"] ?: "N/A"
-                motorPowerMValue.text = fields["power"] ?: "N/A"
+
+            // Handles old ID 784 and NEW ID 800 (Motors Data)
+            784, 800 -> {
+                // Map old 'rpm' to new 'MOTOR_RPM'
+                motorRpmValue.text = fields["MOTOR_RPM"] ?: fields["rpm"] ?: "N/A"
+                // Map old 'power' to new 'MOTOR_POWER'
+                motorPowerMValue.text = fields["MOTOR_POWER"] ?: fields["power"] ?: "N/A"
+
+                // Keep these for backward compatibility/future fields on 800, using "N/A" if not found
                 motorCurrentValue.text = fields["phaseCurrent"] ?: "N/A"
                 motorTempValue.text = fields["motorTemp"] ?: "N/A"
                 mcuTempValue.text = fields["mcuTemp"] ?: "N/A"
             }
+
             9999 -> { // Inserted Dummy Data
                 keyStateValue.text = fields["dummy_key"] ?: "INSERTED"
             }
         }
 
-        Log.d(TAG, "Received message: ID=${message.messageId}, Fields=${message.fields.keys.joinToString()}")
+        // UPDATED LOG STATEMENT to include both keys and values
+        Log.d(TAG, "Received message: ID=${message.messageId}, Data=${message.fields.map { "${it.key}=${it.value}" }.joinToString()}")
     }
 
     private fun sendDummyData() {
